@@ -1,11 +1,16 @@
 import streamlit as st
 
+# variable to store our messages
+if 'messages' not in st.session_state:
+    st.session_state['messages'] = [{'role': 'user', 'message': 'Hello, How are you?'},
+                     {'role': 'assistant', 'message': 'I am good, how are you?'}]
+
 with st.container(border=True):
 
-    with st.chat_message('user'):
-        st.write('Hello, How are you?')
+    for message in st.session_state.messages:
+        with st.chat_message(message['role']):
+            st.write(message['message'])
 
-    with st.chat_message('assistant'):
-        st.write('I am good, how are you?')
-
-    st.chat_input('Enter your messages here.')
+    if user_message := st.chat_input('Enter your messages here.'):
+        st.session_state['messages'].append({'role': 'user', 'message': user_message})
+        st.rerun()
