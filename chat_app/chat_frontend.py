@@ -1,4 +1,5 @@
 import streamlit as st
+from using_langchain import sequential_chain
 
 # variable to store our messages
 if 'messages' not in st.session_state:
@@ -13,4 +14,6 @@ with st.container(border=True):
 
     if user_message := st.chat_input('Enter your messages here.'):
         st.session_state['messages'].append({'role': 'user', 'message': user_message})
+        ai_message = sequential_chain.invoke({'message_history': st.session_state['messages'], 'query': user_message})
+        st.session_state['messages'].append({'role': 'assistant', 'message': ai_message})
         st.rerun()
