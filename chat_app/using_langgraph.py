@@ -1,5 +1,6 @@
 from langgraph.graph import START, END, StateGraph
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
 from typing import TypedDict, List, Annotated, Literal
 from pydantic import BaseModel, Field
@@ -8,6 +9,7 @@ import os
 
 load_dotenv('../.env')
 chat_gemini_api_key = os.getenv('chat_gemini_api_key')
+str_output_parser = StrOutputParser()
 
 # 0. node_0 is a chat prompt template which prepares the prompt to be sent to chat_model
 # 1. Will classify in the chat itself whether it is an excel transformation operation or a simple query based task.
@@ -19,14 +21,18 @@ chat_gemini_api_key = os.getenv('chat_gemini_api_key')
 # 3. If it is not an excel based transformation then redirect to node_3
     # 3.1. Simple Q&A will continue.
 
+
 # Output schema to be produced by chat_model_1
 class ChatModelSchema(BaseModel):
     query_type: Annotated[str, Literal['excel_transformation', 'not_excel_transformation']] = Field(description='Output can either be "excel_transformation" or "not_excel_transformation" and nothing else allowed.') 
     output: List[str] = Field(description='In case it is asking for "excel_transformation" then return blank else return the query as is.')
 
-chat_model_1 = ChatGoogleGenerativeAI(model='gemini-2.5-flash', api_key=chat_gemini_api_key)
+
+# chat_model_1 = ChatGoogleGenerativeAI(model='gemini-2.5-flash', api_key=chat_gemini_api_key)
+chat_model_1 = ChatGoogleGenerativeAI(model='gemini-3.1-flash-lite-preview', api_key=chat_gemini_api_key)
 # Converting chat model so that output structure is of type ChatModelOutput
 structured_chat_model_1 = chat_model_1.with_structured_output(ChatModelSchema)
+
 
 # state variable for the graph
 class StateSchema(TypedDict):
@@ -36,42 +42,52 @@ class StateSchema(TypedDict):
     query_type: str
     output: List[str]
 
+
 def node_0(input_state: StateSchema):
-    prompt_template = ChatPromptTemplate([
-        ('system', 'You are a helpfule AI assistant which will classify whether a user query is of type: "excel_transformation", "not_excel_transformation" '),
+    query = input_state['prompt']
+    prompt_template = ChatPromptTemplate.from_messages([
+        ('system', 'You are a helpful AI assistant. Answer the queries from user." '),
         ('human', '{query}')
     ])
-    input_state['prompt'] = prompt_template.invoke({query: query})
-    return input_state['prompt']
+    input_state['prompt'] = prompt_template.invoke({'query': query})
+    print('Executed Node 0 !!')
+    return input_state
 
 
 def node_1(input_state: StateSchema):
     res = structured_chat_model_1.invoke(input_state['prompt'])
     input_state['query_type'] = res.query_type
-    return input_state['query_type'] 
+    print('Executed Node 1 !!')
+    return input_state
 
 
-chat_model_2 = ChatGoogleGenerativeAI(model='gemini-2.5-flash', api_key=chat_gemini_api_key)
+# chat_model_2 = ChatGoogleGenerativeAI(model='gemini-2.5-flash', api_key=chat_gemini_api_key)
+chat_model_2 = ChatGoogleGenerativeAI(model='gemini-3.1-flash-lite-preview', api_key=chat_gemini_api_key)
 def node_2(input_state: StateSchema):
     query = input_state['prompt']
-    prompt = ChatPromptTemplate([
-        ('system', 'You are an helpful AI assitant that provides back the python code for transformation of a pandas dataframe based on user query.'),
+    prompt_template = ChatPromptTemplate.from_messages([
+        ('system', 'You are a helpful AI assitant that provides back the python code for transformation of a pandas dataframe based on user query. Provide only the python code and nothing else. Each python code line will be seaparated by a comma.'),
         ('human', '{query}')
     ])
-    res = (prompt | chat_model_2).invoke({'query': query})
-    input_state['output'] = res.content
-    return input_state['output']
+    # Want to store my final prompt
+    input_state['prompt'] = prompt_template.invoke(query)
+    input_state['output'] = (chat_model_2 | str_output_parser).invoke(input_state['prompt'])
+    print('Executed Node 2 !!')
+    return input_state
 
 
 def node_3(input_state: StateSchema):
     query = input_state['prompt']
-    prompt = ChatPromptTemplate([
-        ('system', 'You are a helpful chat assistant. Answer the queries of user to best of your knowledge.'),
+    prompt_template = ChatPromptTemplate([
+        ('system', 'You are a helpful AI chat assistant. Answer the queries of user to the best of your knowledge.'),
         ('human', '{query}')
     ])
-    res = (prompt | chat_model_2).invoke(query)
-    input_state['output'] = res.content
-    return input_state['output']
+    # Want to store my final prompt
+    input_state['prompt'] = prompt_template.invoke(query)
+    input_state['output'] = (chat_model_2 | str_output_parser).invoke(query)
+    print('Executed Node 3 !!')
+    return input_state
+
 
 def conditional_node(input_state: StateSchema):
     if input_state['query_type']=='excel_transformation':
@@ -96,4 +112,10 @@ graph.add_conditional_edges('node_1', conditional_node, {
 graph.add_edge('node_2', END)
 graph.add_edge('node_3', END)
 
-workflow = graph.compile()
+final_workflow = graph.compile()
+
+if __name__ == '__main__':
+    # input_state = {'prompt': 'How are you?'}
+    input_state = {"prompt": "Add the column 'a' and 'b' in table tab to produce a final table having column 'res'. Further on, create another column called 'mul_res' which is produced by a*b. Create another column 'even_or_odd': if a is even then the new column stores 'Even' else 'Odd'."}
+    res = final_workflow.invoke(input_state)
+    print(f'Prompt is {res}')
