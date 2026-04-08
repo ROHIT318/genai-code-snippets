@@ -2,7 +2,7 @@ from langgraph.graph import START, END, StateGraph
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from typing import TypedDict, List, Annotated, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 import os
 
@@ -20,29 +20,80 @@ chat_gemini_api_key = os.getenv('chat_gemini_api_key')
     # 3.1. Simple Q&A will continue.
 
 # Output schema to be produced by chat_model_1
-class ChatModelOutput(BaseModel):
-    query_type: Annotated[str, Literal['excel_transformation', 'not_excel_transformation'], 'Output is produced will on the basis of prompt provided and can either be excel_transformation and not_excel_transformation.'] 
-    output: List[str]
+class ChatModelSchema(BaseModel):
+    query_type: Annotated[str, Literal['excel_transformation', 'not_excel_transformation']] = Field(description='Output can either be "excel_transformation" or "not_excel_transformation" and nothing else allowed.') 
+    output: List[str] = Field(description='In case it is asking for "excel_transformation" then return blank else return the query as is.')
 
-chat_model = ChatGoogleGenerativeAI(model='gemini-2.5-flash', api_key=chat_gemini_api_key)
+chat_model_1 = ChatGoogleGenerativeAI(model='gemini-2.5-flash', api_key=chat_gemini_api_key)
 # Converting chat model so that output structure is of type ChatModelOutput
-structured_chat_model = chat_model.with_structured_output(ChatModelOutput)
+structured_chat_model_1 = chat_model_1.with_structured_output(ChatModelSchema)
 
 # state variable for the graph
 class StateSchema(TypedDict):
     prompt: str
-    query_type: Annotated[str, Literal['excel_transformation', 'not_excel_transformation'], 'Output is produced will on the basis of prompt provided and can either be excel_transformation and not_excel_transformation.'] 
+    # query_type: Annotated[str, Literal['excel_transformation', 'not_excel_transformation']] = Field(description='Output is produced will on the basis of prompt provided and can either be excel_transformation and not_excel_transformation.') 
+    # Not doing strict type checking it is already handled by ChatModelSchema 
+    query_type: str
     output: List[str]
 
 def node_0(input_state: StateSchema):
-    input_state['prompt'] = ChatPromptTemplate.from_messages([
+    prompt_template = ChatPromptTemplate([
         ('system', 'You are a helpfule AI assistant which will classify whether a user query is of type: "excel_transformation", "not_excel_transformation" '),
         ('human', '{query}')
     ])
+    input_state['prompt'] = prompt_template.invoke({query: query})
     return input_state['prompt']
 
+
 def node_1(input_state: StateSchema):
-    input_state['query_type'] = structured_chat_model.invoke(input_state['prompt'])
+    res = structured_chat_model_1.invoke(input_state['prompt'])
+    input_state['query_type'] = res.query_type
     return input_state['query_type'] 
 
+
+chat_model_2 = ChatGoogleGenerativeAI(model='gemini-2.5-flash', api_key=chat_gemini_api_key)
+def node_2(input_state: StateSchema):
+    query = input_state['prompt']
+    prompt = ChatPromptTemplate([
+        ('system', 'You are an helpful AI assitant that provides back the python code for transformation of a pandas dataframe based on user query.'),
+        ('human', '{query}')
+    ])
+    res = (prompt | chat_model_2).invoke({'query': query})
+    input_state['output'] = res.content
+    return input_state['output']
+
+
+def node_3(input_state: StateSchema):
+    query = input_state['prompt']
+    prompt = ChatPromptTemplate([
+        ('system', 'You are a helpful chat assistant. Answer the queries of user to best of your knowledge.'),
+        ('human', '{query}')
+    ])
+    res = (prompt | chat_model_2).invoke(query)
+    input_state['output'] = res.content
+    return input_state['output']
+
+def conditional_node(input_state: StateSchema):
+    if input_state['query_type']=='excel_transformation':
+        return "node_2"
+    else:
+        return "node_3"
+
 graph = StateGraph(StateSchema)
+
+graph.add_node('node_0', node_0)
+graph.add_node('node_1', node_1)
+graph.add_node('node_2', node_2)
+graph.add_node('node_3', node_3)
+
+graph.add_edge(START, 'node_0')
+graph.add_edge('node_0', 'node_1')
+graph.add_conditional_edges('node_1', conditional_node, {
+        "node_2": "node_2",
+        "node_3": "node_3",   
+    }
+)
+graph.add_edge('node_2', END)
+graph.add_edge('node_3', END)
+
+workflow = graph.compile()
