@@ -16,7 +16,7 @@ def get_session_files():
     files = list(CHAT_DIR.glob("*.json"))
     return sorted(files, key=os.path.getmtime, reverse=True)
 
-def save_message(session_id, role, content, csv_data=None):
+def save_message(session_id, role, content, json_csv_data=None):
     """Append a message to the session's JSON file."""
     file_path = CHAT_DIR / f"{session_id}.json"
     
@@ -39,8 +39,8 @@ def save_message(session_id, role, content, csv_data=None):
         "content": content,
         "timestamp": datetime.now().isoformat()
     }
-    if csv_data is not None:
-        msg_entry["csv_data"] = csv_data
+    if json_csv_data is not None:
+        msg_entry["json_csv_data"] = json_csv_data
     
     data["messages"].append(msg_entry)
     
@@ -104,37 +104,39 @@ for message in st.session_state.messages:
     role = "assistant" if message['role'] == 'assistant' else "user"
     with st.chat_message(role):
         st.write(message['content'])
-        if "csv_data" in message:
-            df = pd.read_json(message["csv_data"])
-            st.dataframe(df)
+        if "json_csv_data" in message and message['json_csv_data'] is not None:
+            print('if "json_csv_data" in message')
+            df = json.loads(message["json_csv_data"])
+            st.dataframe(pd.DataFrame(df))
 
 # Input handling
 if prompt := st.chat_input('Enter your messages here', accept_file=True, file_type=["csv"]):
     user_message = prompt.text if hasattr(prompt, 'text') else prompt
-    csv_data = None
+    json_csv_data = None
     
     # Handle CSV upload
-    if hasattr(prompt, 'file') and prompt.file is not None:
+    if len(prompt.files) != 0:
         try:
-            df = pd.read_csv(prompt.file)
-            csv_data = df.to_json()
+            df = pd.read_csv(prompt.files[0])
+            json_csv_data = df.to_json()
         except Exception as e:
             st.error("Error reading CSV file.")
     
-    st.session_state['messages'].append({'role': 'user', 'content': user_message, 'csv_data': csv_data})
-    save_message(st.session_state['session_id'], "user", user_message, csv_data=csv_data)
+    st.session_state['messages'].append({'role': 'user', 'content': user_message, 'json_csv_data': json_csv_data})
+    save_message(st.session_state['session_id'], "user", user_message, json_csv_data=json_csv_data)
     
     with st.chat_message("user"):
         st.write(user_message)
-        if csv_data:
-            st.dataframe(pd.read_json(csv_data))
+        if json_csv_data:
+            st.dataframe(json.loads(json_csv_data))
     
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            ai_response = sequential_chain.invoke({
-                'message_history': st.session_state['messages'], 
-                'query': user_message
-            })
+            # ai_response = sequential_chain.invoke({
+            #     'message_history': st.session_state['messages'], 
+            #     'query': user_message
+            # })
+            ai_response = 'Dummy AI response'
             st.write(ai_response)
     
     st.session_state['messages'].append({'role': 'assistant', 'content': ai_response})
