@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from using_langchain import sequential_chain
+from using_langgraph import final_workflow
 
 # --- CONFIGURATION & HELPERS ---
 CHAT_DIR = Path("chat")
@@ -136,7 +137,11 @@ if prompt := st.chat_input('Enter your messages here', accept_file=True, file_ty
             #     'message_history': st.session_state['messages'], 
             #     'query': user_message
             # })
-            ai_response = 'Dummy AI response'
+            # ai_response = 'Dummy AI response'
+            ai_response = final_workflow.invoke({
+                'message_history': st.session_state['messages'], 
+                'prompt': user_message
+            })
             st.write(ai_response)
     
     st.session_state['messages'].append({'role': 'assistant', 'content': ai_response})
