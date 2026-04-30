@@ -3,10 +3,14 @@ import pandas as pd
 import uuid
 import json
 import os
+from dotenv import load_dotenv
 from datetime import datetime
 from pathlib import Path
 from using_langchain import sequential_chain
 from using_langgraph import final_workflow
+
+load_dotenv('../.env')
+FILE_TO_USE = os.getenv('FILE_TO_USE')
 
 # --- CONFIGURATION & HELPERS ---
 CHAT_DIR = Path("chat")
@@ -133,15 +137,16 @@ if prompt := st.chat_input('Enter your messages here', accept_file=True, file_ty
     
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            # ai_response = sequential_chain.invoke({
-            #     'message_history': st.session_state['messages'], 
-            #     'query': user_message
-            # })
-            # ai_response = 'Dummy AI response'
-            ai_response = final_workflow.invoke({
-                'message_history': st.session_state['messages'], 
-                'prompt': user_message
-            })
+            if FILE_TO_USE=='using_langchain.py':
+                ai_response = sequential_chain.invoke({
+                    'message_history': st.session_state['messages'], 
+                    'query': user_message
+                })['text']
+            else:
+                ai_response = final_workflow.invoke({
+                    'message_history': st.session_state['messages'], 
+                    'prompt': user_message
+                })['output']
             st.write(ai_response)
     
     st.session_state['messages'].append({'role': 'assistant', 'content': ai_response})
