@@ -15,6 +15,8 @@ class RAG():
         self.documents_embeddings = self.create_embeddings(self.documents)
         self.query = query
         self.query_embeddings = self.embed_query(query)
+        self.topn = topn
+        self.top_n_similar_documents = self._get_topn_results()
 
     def create_embeddings(self, documents: List[str]):
         return self.emb_model.embed_documents(self.documents)
@@ -26,7 +28,15 @@ class RAG():
         return self.emb_model.embed_query(query)
     
     def _get_topn_results(self):
-        return cosine_similarity([self.query_embeddings], self.documents_embeddings)
+        similarity_score = cosine_similarity([self.query_embeddings], self.documents_embeddings)[0]
+        document_with_embeddings = list(zip(similarity_score, self.documents))
+        document_with_embeddings_sorted = sorted(document_with_embeddings, key=lambda x: x[0], reverse=True)
+        top_n_similar_documents = []
+        for i in range(self.topn):
+            top_n_similar_documents.append(document_with_embeddings_sorted[i][1])
+        return top_n_similar_documents
+        # return document_with_embeddings
+
     
 
 if __name__ == '__main__':
@@ -40,5 +50,5 @@ if __name__ == '__main__':
     ]
     query = 'What is the capital of India?'
     rag = RAG(documents=documents, query=query, emb_model=emb_model, api_key=chat_geimini_api_key, topn=2)
-    print(rag._get_topn_results())
-        
+
+    print(rag.top_n_similar_documents)  
