@@ -8,9 +8,19 @@ from datetime import datetime
 from pathlib import Path
 from using_langchain import sequential_chain
 from using_langgraph import final_workflow
+from utils.excel_transformation import ExcelTransformation
 
 load_dotenv('../.env')
 FILE_TO_USE = os.getenv('FILE_TO_USE')
+
+if 'res_df' not in st.session_state:
+    st.session_state.res_df = pd.DataFrame()
+
+if 'json_res_df' not in st.session_state:
+    st.session_state.json_res_df = {}
+
+if 'df' not in st.session_state:
+    st.session_state.df = pd.DataFrame()
 
 # --- CONFIGURATION & HELPERS ---
 CHAT_DIR = Path("chat")
@@ -111,8 +121,8 @@ for message in st.session_state.messages:
         st.write(message['content'])
         if "json_csv_data" in message and message['json_csv_data'] is not None:
             print('if "json_csv_data" in message')
-            df = json.loads(message["json_csv_data"])
-            st.dataframe(pd.DataFrame(df))
+            st.session_state.df = json.loads(message["json_csv_data"])
+            st.dataframe(pd.DataFrame(st.session_state.df))
 
 # Input handling
 if prompt := st.chat_input('Enter your messages here', accept_file=True, file_type=["csv"]):
@@ -146,9 +156,22 @@ if prompt := st.chat_input('Enter your messages here', accept_file=True, file_ty
                 ai_response = final_workflow.invoke({
                     'message_history': st.session_state['messages'], 
                     'prompt': user_message
-                })['output']
+                })
+                query_type = ai_response['query_type']
+                ai_response = ai_response['output']
+
+                if query_type=="excel_transformation" and not pd.DataFrame(st.session_state.df).empty:
+                    xl_trsnf = ExcelTransformation(df=pd.DataFrame(st.session_state.df), steps=ai_response)
+                    st.session_state.res_df = xl_trsnf.df
+                    st.session_state.json_res_df = xl_trsnf.df.to_json()
+
             st.write(ai_response)
-    
-    st.session_state['messages'].append({'role': 'assistant', 'content': ai_response})
+            if not st.session_state.res_df.empty:
+                st.dataframe(st.session_state.res_df)
+
+    if st.session_state.json_res_df:
+        st.session_state['messages'].append({'role': 'assistant', 'content': ai_response, 'json_csv_data': st.session_state.json_res_df})
+    else:
+        st.session_state['messages'].append({'role': 'assistant', 'content': ai_response})
     save_message(st.session_state['session_id'], "assistant", ai_response)
     st.rerun()
