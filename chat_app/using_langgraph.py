@@ -2,7 +2,7 @@ from langgraph.graph import START, END, StateGraph
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
-from typing import TypedDict, List, Annotated, Literal
+from typing import TypedDict, List, Annotated, Literal, Dict
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 import os
@@ -22,8 +22,8 @@ str_output_parser = StrOutputParser()
     # 3.1. Simple Q&A will continue.
 
 
-# Output schema to be produced by chat_model_1
 class ChatModelSchema(BaseModel):
+    """ Output schema to be produced by chat_model_1 """
     query_type: Annotated[str, Literal['excel_transformation', 'not_excel_transformation']] = Field(description='Output can either be "excel_transformation" or "not_excel_transformation" and nothing else allowed.') 
     output: List[str] = Field(description='In case it is asking for "excel_transformation" then return blank else return the query as is.')
 
@@ -37,6 +37,7 @@ structured_chat_model_1 = chat_model_1.with_structured_output(ChatModelSchema)
 # state variable for the graph
 class StateSchema(TypedDict):
     prompt: str
+    message_history: List[Dict[str, str]]
     # query_type: Annotated[str, Literal['excel_transformation', 'not_excel_transformation']] = Field(description='Output is produced will on the basis of prompt provided and can either be excel_transformation and not_excel_transformation.') 
     # Not doing strict type checking it is already handled by ChatModelSchema 
     query_type: str
@@ -66,7 +67,7 @@ chat_model_2 = ChatGoogleGenerativeAI(model='gemini-3.1-flash-lite-preview', api
 def node_2(input_state: StateSchema):
     query = input_state['prompt']
     prompt_template = ChatPromptTemplate.from_messages([
-        ('system', 'You are a helpful AI assitant that provides back the python code for transformation of a pandas dataframe based on user query. Provide only the python code and nothing else. Each python code line will be seaparated by a comma.'),
+        ('system', 'You are a helpful AI assistant that provides back the python code for transformation of a pandas dataframe based on user query. Provide only the python code and nothing else. Each python code line will be seaparated by a comma.'),
         ('human', '{query}')
     ])
     # Want to store my final prompt
