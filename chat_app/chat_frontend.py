@@ -1,14 +1,16 @@
 import streamlit as st
 import pandas as pd
+import tempfile
 import uuid
 import json
 import os
 from dotenv import load_dotenv
 from datetime import datetime
 from pathlib import Path
-from using_langchain import sequential_chain
-from using_langgraph import final_workflow
+from utils.using_langchain import sequential_chain
+from utils.using_langgraph import final_workflow
 from utils.excel_transformation import ExcelTransformation
+from utils.content_loader import ContentLoader
 
 load_dotenv('../.env')
 FILE_TO_USE = os.getenv('FILE_TO_USE')
@@ -125,20 +127,37 @@ for message in st.session_state.messages:
             st.dataframe(pd.DataFrame(st.session_state.df))
 
 # Input handling
-if prompt := st.chat_input('Enter your messages here', accept_file=True, file_type=["csv"]):
+if prompt := st.chat_input('Enter your messages here', accept_file=True, file_type=["csv", "pdf"]):
     user_message = prompt.text if hasattr(prompt, 'text') else prompt
     json_csv_data = None
     
     # Handle CSV upload
     if len(prompt.files) != 0:
+        file_name = prompt.files[0].name.lower()
+
         try:
-            df = pd.read_csv(prompt.files[0])
-            json_csv_data = df.to_json()
+
+            if file_name.endswith('.csv'):
+                df = pd.read_csv(prompt.files[0])
+                json_csv_data = df.to_json()
+
+            elif file_name.endswith('.pdf'):
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+                    temp_file.write(prompt.files[0].getvalue())
+                    temp_path = temp_file.name
+
+                    content_loader = ContentLoader(temp_path)
+                    st.write(content_loader.display_all_documents())
+                
         except Exception as e:
-            st.error("Error reading CSV file.")
+            st.error("Error reading file, {e}.")
+
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
     
-    st.session_state['messages'].append({'role': 'user', 'content': user_message, 'json_csv_data': json_csv_data})
-    save_message(st.session_state['session_id'], "user", user_message, json_csv_data=json_csv_data)
+    st.session_state['messages'].append({'role': 'user', 'content': user_message, 'json_csv_data': json_csv_data, 'pdf_content': content_loader.clean_document_content})
+    save_message(st.session_state['session_id'], "user", user_message, json_csv_data=json_csv_data, pdf_content=content_loader.clean_document_content)
     
     with st.chat_message("user"):
         st.write(user_message)
