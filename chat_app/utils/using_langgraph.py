@@ -24,8 +24,16 @@ str_output_parser = StrOutputParser()
 
 class ChatModelSchema(BaseModel):
     """ Output schema to be produced by chat_model_1 """
-    query_type: Annotated[str, Literal['excel_transformation', 'not_excel_transformation']] = Field(description='Output can either be "excel_transformation" or "not_excel_transformation" and nothing else allowed.') 
-    output: List[str] = Field(description='In case it is asking for "excel_transformation" then return blank else return the query as is.')
+    query_type: Annotated[str, Literal['excel_transformation', 'correct_job_match', 'not_excel_transformation']] = Field(description=(
+        "Classify the user query into one of three categories:\n"
+        "- 'excel_transformation': Query involves transforming tabular or Excel data.\n"
+        "- 'correct_job_match': Query asks for job recommendations based on a resume or CV.\n"
+        "- 'not_excel_transformation': Any other type of query."
+    )) 
+    output: List[str] = Field(description=(
+        "The original query returned as a list of strings. "
+        "Returns an empty list if query_type is 'excel_transformation'."
+    ))
 
 
 # chat_model_1 = ChatGoogleGenerativeAI(model='gemini-2.5-flash', api_key=chat_gemini_api_key)
@@ -42,6 +50,15 @@ class StateSchema(TypedDict):
     # Not doing strict type checking it is already handled by ChatModelSchema 
     query_type: str
     output: List[str]
+
+class ATSScoreSchema(TypedDict):
+    prompt: str = Field(description='General query asked by the end user to AI Assistant.')
+    message_history: List[Dict[str, str]] = Field(description='Conversation history between AI assistant and human.')
+    resume_description: str = Field(description='Contains the details of the resume shared by end user, containing education history, job experience, certifications achievements and skills.')
+    job_description: Dict[str, str] = Field(description='Contains job role title as key of the dictionary and job description as value of the dictionary.')
+    ats_score: Dict[str, int] = Field(description='Contains job role title as key of the dictionary and ATS score for a resume to that paricular job description as value of the dictionary.')
+    job_wise_improvements: Dict[str, str] = Field(description='Contains job role title as key of the dictionary and improvements that can be done in the resume and in personal skillset with certifications to increase the score for that paricular job description to improve the ATS score, it will be the value of the dictionary.')
+    overall_improvements: str = Field(description='Overall improvements that can be done in the resume, skillset and additional certifications that can be done to improve the ATS score.')
 
 
 def node_0(input_state: StateSchema):
@@ -76,8 +93,21 @@ def node_2(input_state: StateSchema):
     print('Executed Node 2 !!')
     return input_state
 
+# Needs further improvement
+ats_chat_model = chat_model_2.with_structured_output(ATSScoreSchema)
+def node_3(input_state: ATSScoreSchema):
+    query = input_state['prompt']
+    prompt_template = ChatPromptTemplate.from_messages([
+        ('system', ''),
+        ('human', '{resume_description} {job_description} {message_history}')
+    ])
+    input_state['prompt'] = prompt_template.invoke(query)
+    input_state['output'] = (ats_chat_model | str_output_parser).invoke(input_state['prompt'])
+    print('Executed Node 3 !!')
+    return input_state
 
-def node_3(input_state: StateSchema):
+
+def node_4(input_state: StateSchema):
     query = input_state['prompt']
     prompt_template = ChatPromptTemplate([
         ('system', 'You are a helpful AI chat assistant. Answer the queries of user to the best of your knowledge.'),
@@ -86,15 +116,17 @@ def node_3(input_state: StateSchema):
     # Want to store my final prompt
     input_state['prompt'] = prompt_template.invoke(query)
     input_state['output'] = (chat_model_2 | str_output_parser).invoke(query)
-    print('Executed Node 3 !!')
+    print('Executed Node 4 !!')
     return input_state
 
 
 def conditional_node(input_state: StateSchema):
     if input_state['query_type']=='excel_transformation':
         return "node_2"
-    else:
+    elif input_state['query_type']=='correct_job_match':
         return "node_3"
+    else:
+        return "node_4"
 
 graph = StateGraph(StateSchema)
 
@@ -102,16 +134,19 @@ graph.add_node('node_0', node_0)
 graph.add_node('node_1', node_1)
 graph.add_node('node_2', node_2)
 graph.add_node('node_3', node_3)
+graph.add_node('node_4', node_4)
 
 graph.add_edge(START, 'node_0')
 graph.add_edge('node_0', 'node_1')
 graph.add_conditional_edges('node_1', conditional_node, {
         "node_2": "node_2",
-        "node_3": "node_3",   
+        "node_3": "node_3",
+        "node_4": "node_4",
     }
 )
 graph.add_edge('node_2', END)
 graph.add_edge('node_3', END)
+graph.add_edge('node_4', END)
 
 final_workflow = graph.compile()
 
