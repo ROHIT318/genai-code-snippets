@@ -131,10 +131,10 @@ for message in st.session_state.messages:
     role = "assistant" if message['role'] == 'assistant' else "user"
     with st.chat_message(role):
         st.write(message['content'])
-        if message['json_csv_data'] is not None and len(message['json_csv_data'])!=0:
+        if 'json_csv_data' in message and message['json_csv_data'] is not None and len(message['json_csv_data'])!=0:
             st.session_state.df = json.loads(message["json_csv_data"])
             st.dataframe(pd.DataFrame(st.session_state.df))
-        elif message['json_pdf_data'] is not None and len(message['json_pdf_data'])!=0:
+        elif 'json_pdf_data' in message and message['json_pdf_data'] is not None and len(message['json_pdf_data'])!=0:
             try:
                 st.write(message['json_pdf_data'][2][1])
             except:
@@ -144,6 +144,7 @@ for message in st.session_state.messages:
 if prompt := st.chat_input('Enter your messages here', accept_file=True, file_type=["csv", "pdf"]):
     user_message = prompt.text if hasattr(prompt, 'text') else prompt
     json_csv_data = None
+    temp_path = ''
     
     # Handle CSV upload
     if len(prompt.files) != 0:
@@ -153,7 +154,7 @@ if prompt := st.chat_input('Enter your messages here', accept_file=True, file_ty
 
             if file_name.endswith('.csv'):
                 df = pd.read_csv(prompt.files[0])
-                json_csv_data = df.to_json()
+                st.session_state.json_csv_data = df.to_json()
 
             elif file_name.endswith('.pdf'):
                 with tempfile.NamedTemporaryFile(dir=os.path.join(os.getcwd(), 'chat_app', 'utils'), delete=False, suffix=".pdf") as temp_file:
@@ -171,13 +172,13 @@ if prompt := st.chat_input('Enter your messages here', accept_file=True, file_ty
             if os.path.exists(temp_path):
                 os.remove(temp_path)
     
-    st.session_state['messages'].append({'role': 'user', 'content': user_message, 'json_csv_data': json_csv_data, 'json_pdf_data': st.session_state.json_pdf_data})
-    save_message(st.session_state['session_id'], "user", user_message, json_csv_data=json_csv_data, json_pdf_data=st.session_state.json_pdf_data)
+    st.session_state['messages'].append({'role': 'user', 'content': user_message, 'json_csv_data': st.session_state.json_csv_data, 'json_pdf_data': st.session_state.json_pdf_data})
+    save_message(st.session_state['session_id'], "user", user_message, json_csv_data=st.session_state.json_csv_data, json_pdf_data=st.session_state.json_pdf_data)
     
     with st.chat_message("user"):
         st.write(user_message)
-        if json_csv_data:
-            st.dataframe(json.loads(json_csv_data))
+        if st.session_state.json_csv_data:
+            st.dataframe(json.loads(st.session_state.json_csv_data))
     
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
@@ -210,4 +211,6 @@ if prompt := st.chat_input('Enter your messages here', accept_file=True, file_ty
     else:
         st.session_state['messages'].append({'role': 'assistant', 'content': ai_response})
     save_message(st.session_state['session_id'], "assistant", ai_response)
+    st.session_state.json_csv_data = []
+    st.session_state.json_pdf_data = []
     st.rerun()

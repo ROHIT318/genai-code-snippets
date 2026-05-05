@@ -6,7 +6,7 @@ from langchain_core.runnables import RunnableSequence
 import os
 from dotenv import load_dotenv
 
-load_dotenv('../.env')
+load_dotenv('.env')
 chat_gemini_api_key = os.getenv('chat_gemini_api_key')
 
 chat_model = ChatGoogleGenerativeAI(model='gemini-2.5-flash', api_key=chat_gemini_api_key)
