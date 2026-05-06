@@ -1,0 +1,41 @@
+
+Module 1 — Runnable Primitives & LCEL Fluency
+Task 1.1 — Custom preprocessing pipeline
+Build a chain that takes a raw user question and preprocesses it before hitting the LLM. Your chain must use RunnableLambda, RunnablePassthrough, and RunnableAssign together. The chain should: extract a question field, assign a word_count metadata field computed inline, lowercase + strip the text, and pass through session_id untouched to the final prompt template.
+
+Task 1.2 — Streaming vs batching benchmark
+Write a single RunnableLambda that sleeps for a configurable duration to simulate retrieval latency. Build a chain around it and compare wall-clock time across invoke, batch, stream, and their async counterparts (ainvoke, abatch, astream). Produce a summary dict showing latency and throughput per mode. You must use asyncio.gather for the async batch — no sequential awaiting.
+Deliverable: Both chains with a main.py that prints structured results. Explain in comments why batch is faster than sequential invoke for this workload.
+
+
+
+Module 2 — Routing, Branching & Parallelism
+Task 2.1 — Intent-based multi-route chain
+Build a chain that classifies an incoming query into one of three intents — forecast, bottleneck_analysis, general — and then routes it to a dedicated sub-chain per intent. Each sub-chain has its own system prompt tuned for that domain. Use RunnableBranch for the routing. The classifier itself must be a lightweight LCEL chain (no hardcoded if/else outside the branch). Handle the case where classification returns an unexpected label gracefully.
+
+Task 2.2 — Parallel evidence gathering
+Given a business KPI question, build a RunnableParallel that fires three sub-chains concurrently: one retrieves relevant operational context from a FAISS vector store, one searches for the metric definition using a mock tool, and one runs a simpler "quick answer" LLM pass. A final synthesis chain takes all three outputs and produces a single structured response. Measure and log the time saved vs running them sequentially.
+
+Task 2.3 — Dynamic chain selection at runtime
+Implement a RunnableLambda that acts as a factory: it inspects the config["configurable"]["complexity"] value and returns either a fast lightweight chain (small model, no retrieval) or a deep chain (larger model + RAG). The caller should be able to switch chain behavior purely through chain.invoke(input, config={"configurable": {"complexity": "high"}}) with zero code changes.
+
+
+
+Module 3 — Production Hardening
+Task 3.1 — Fallback chain with model failover
+Build a primary chain using a gpt-4o-mini (or Claude Haiku equivalent) call. Wrap it with .with_fallbacks([backup_chain]) where the backup uses a different provider. Simulate the primary failing by injecting a RunnableLambda that raises an exception 50% of the time (use random). Log which chain actually served each request. Run 20 invocations and report success/fallback ratio.
+
+Task 3.2 — Retry with exponential backoff
+Apply .with_retry(stop_after_attempt=3, wait_exponential_jitter=True) to a chain that randomly raises a rate-limit-style exception. Add a RunnableLambda before the retry wrapper that logs attempt number using a closure. Verify via logs that retries actually fire and that they don't retry on ValueError (only on your custom RateLimitError).
+
+Task 3.3 — Configurable runtime injection
+Take any chain from the previous tasks and make the following fields configurable at runtime without rebuilding the chain: the system prompt tone (formal vs casual), the output schema (structured JSON vs plain text), and the temperature. Use ConfigurableField with appropriate defaults. Write tests using pytest that assert each config combination produces different outputs.
+
+Task 3.4 — Custom callback handler
+Implement a BaseCallbackHandler subclass that: records start/end timestamps per runnable in the chain, counts total LLM tokens consumed, and writes a flamegraph-style summary to stdout showing which step took what percentage of total latency. Attach it to any complex chain from Module 2 and run it.
+
+
+
+Module 4 — Capstone: Demand Forecasting Analyst Agent
+This is the centerpiece. Build a complete, production-shaped agent that a capacity planning team could realistically use.
+Scenario: Users ask questions like "What's causing the demand spike in region East in Q3?" or "Forecast the next 2 months for SKU-441 given current bottlenecks."

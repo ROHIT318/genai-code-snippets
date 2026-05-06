@@ -44,20 +44,20 @@ if __name__ == '__main__':
     ############################################
     #           JOB Page Loading 1             #
     ############################################
-    # url_list = ['https://usijobs.deloitte.com/en_US/careersUSI/JobDetail/USI-EH26-EA-GTLO-Sharepoint-Senior-Analyst/340662', 
-    #             'https://usijobs.deloitte.com/en_US/careersUSI/JobDetail/USI-EH26-EA-GTLO-Analytics-Insight-Senior-Analyst/340661', 
-    #             'https://usijobs.deloitte.com/en_US/careersUSI/JobDetail/USI-EH26-TIS-Digital-Analytics-Skills-Lead-Skills-Transformation-Solutions-Workstream-Assistant-Manager/340519'
-    #             ]
+    url_list = ['https://usijobs.deloitte.com/en_US/careersUSI/JobDetail/USI-EH26-EA-GTLO-Sharepoint-Senior-Analyst/340662', 
+                'https://usijobs.deloitte.com/en_US/careersUSI/JobDetail/USI-EH26-EA-GTLO-Analytics-Insight-Senior-Analyst/340661', 
+                'https://usijobs.deloitte.com/en_US/careersUSI/JobDetail/USI-EH26-TIS-Digital-Analytics-Skills-Lead-Skills-Transformation-Solutions-Workstream-Assistant-Manager/340519'
+                ]
     # content_loader = ContentLoader(url_list)
     # content_loader.display_all_documents()
 
     ############################################
     #           JOB Page Loading 2             #
     ############################################
-    url_list = ['https://www.pwc.in/careers/experienced-jobs/description.html?wdjobreqid=280138WD&wdcountry=IND&jobtitle=Associate&wdjobsite=Global_Experienced_Careers&wdjd=simple', 
-                'https://www.pwc.in/careers/experienced-jobs/description.html?wdjobreqid=288872WD&wdcountry=IND&jobtitle=1-10yrs+Application+for+Cyber-+Kolkata+DN+57+-+RDC&wdjobsite=Global_Experienced_Careers&wdjd=simple', 
-                'https://www.pwc.in/careers/experienced-jobs/description.html?wdjobreqid=439388WD&wdcountry=IND&jobtitle=Associate&wdjobsite=Global_Experienced_Careers&wdjd=simple'
-                ]
+    # url_list = ['https://www.pwc.in/careers/experienced-jobs/description.html?wdjobreqid=280138WD&wdcountry=IND&jobtitle=Associate&wdjobsite=Global_Experienced_Careers&wdjd=simple', 
+    #             'https://www.pwc.in/careers/experienced-jobs/description.html?wdjobreqid=288872WD&wdcountry=IND&jobtitle=1-10yrs+Application+for+Cyber-+Kolkata+DN+57+-+RDC&wdjobsite=Global_Experienced_Careers&wdjd=simple', 
+    #             'https://www.pwc.in/careers/experienced-jobs/description.html?wdjobreqid=439388WD&wdcountry=IND&jobtitle=Associate&wdjobsite=Global_Experienced_Careers&wdjd=simple'
+                # ]
     content_loader = ContentLoader(url_list)
     content_loader.display_all_documents()
 
