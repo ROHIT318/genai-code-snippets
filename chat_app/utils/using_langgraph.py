@@ -106,16 +106,18 @@ def node_2(input_state: StateSchema):
 # chat_model_2 = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=chat_gemini_api_key)
 jd_chat_model = chat_model_2.with_structured_output(JobDescription)
 ats_chat_model = chat_model_2.with_structured_output(ATSScoreSchema)
-def node_3(input_state: StateSchema, output_state: ATSScoreSchema):
+def node_3(input_state: StateSchema):
+
+    print(input_state)
 
     output = jd_chat_model.invoke(input_state["prompt"])
-    print(f"output: {output}")
+    # print(f"output: {output}")
 
     content_loader = ContentLoader(output["job_url"])
     input_state["job_description"] = content_loader.clean_document_content
 
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are an helpful AI Assisstant, your job is to extract the different url provided in input prompt and return them in a form of list."),
+        ("system", "You are an helpful AI Assisstant, act as an ATS scorer and your job is to score the resume based on different job descriptions in addition provide how the resume can be modified for each job entry and overall skills, certiications or experience to be gained in order to improve there future chances."),
         ("human", "Here is the asked by the end user: {query}. {job_description}  are the one that user is interested in. Resume of end user {resume}.")
     ])
     output_state = (prompt_template | ats_chat_model ).invoke({"query": input_state["prompt"], "job_description": input_state["job_description"], "resume": input_state["resume_details"]})
@@ -125,10 +127,10 @@ def node_3(input_state: StateSchema, output_state: ATSScoreSchema):
 
 
 # Needs further improvement
-def node_5(input_state: StateSchema, output_state: ATSScoreSchema):
+def node_5(input_state: StateSchema):
     query = input_state["prompt"]
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are an helpful AI Assisstant, act as an ATS scorer and your job is to score the resume based on different job descriptions."),
+        ("system", "You are an helpful AI Assisstant, act as an ATS scorer and your job is to score the resume based on different job descriptions in addition provide how the resume can be modified for each job entry and overall skills, certiications or experience to be gained in order to improve there future chances."),
         ("human", "{resume_description} {job_description} {message_history}")
     ])
     input_state["prompt"] = prompt_template.invoke(query)
@@ -211,5 +213,5 @@ if __name__ == "__main__":
     # print(output)
 
     output_state = ATSScoreSchema()
-    input, result = node_3(input_state, output_state)
+    input, result = node_3(input_state)
     print(result)
