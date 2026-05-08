@@ -89,7 +89,8 @@ def node_1(input_state: StateSchema):
 
 
 # chat_model_2 = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=chat_gemini_api_key)
-chat_model_2 = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite-preview", api_key=chat_gemini_api_key)
+# chat_model_2 = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=chat_gemini_api_key)
+chat_model_2 = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite-preview", api_key=chat_gemini_api_key, temperature=0)
 def node_2(input_state: StateSchema):
     query = input_state["prompt"]
     prompt_template = ChatPromptTemplate.from_messages([
