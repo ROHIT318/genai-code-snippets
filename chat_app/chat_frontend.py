@@ -134,13 +134,15 @@ with st.sidebar:
                 data = json.load(f)
                 title = data.get("title") or ([m["content"] for m in data["messages"] if m["role"] == "user"] or ["Empty Chat"])[0][:20]
                 
-                col1, col2 = st.columns([0.8, 0.2])
+                col1, col2, col3 = st.columns([0.6, 0.2, 0.2])
                 if col1.button(title, key=f"btn_{file.name}"):
                     st.session_state["session_id"] = data["session_id"]
                     st.session_state["messages"] = data["messages"]
                     st.rerun()
                 if col2.button("✏️", key=f"edit_{file.name}"):
                     st.session_state["renaming"] = data["session_id"]
+                if col3.button("🗑️", key=f"delete_{file.name}"):
+                    st.session_state["deleting"] = data["session_id"]
             except (json.JSONDecodeError, KeyError):
                 continue
     
@@ -149,6 +151,13 @@ with st.sidebar:
         if st.button("Save"):
             update_session_title(st.session_state["renaming"], new_title)
             del st.session_state["renaming"]
+            st.rerun()
+
+    if "deleting" in st.session_state:
+        file_path = CHAT_DIR / f"{st.session_state["deleting"]}.json"
+        if file_path.exists():
+            os.remove(file_path)
+            del st.session_state["deleting"]
             st.rerun()
 
 # --- MAIN WINDOW ---
