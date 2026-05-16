@@ -10,7 +10,7 @@
 ## Features
 
 ### 📄 ATS Resume Scorer & Optimizer
-Upload your resume in PDF format and provide a job description URL. The tool scrapes the live job posting, performs a semantic gap analysis, and provides:
+Upload your resume in PDF format and provide single or multiple job description URL. The tool scrapes the live job posting, performs a semantic gap analysis, and provides:
 * An objective ATS compatibility score.
 * Actionable, point-by-point improvements to align your skills with the role.
 * Certification and skill-set recommendations.
@@ -19,11 +19,10 @@ Upload your resume in PDF format and provide a job description URL. The tool scr
 Interact with your data using plain English. Upload a CSV or Excel file and ask the assistant to perform transformations like "Calculate the profit margin," "Filter for rows where sales > 5000," or "Categorize users by age group." The tool generates and executes the necessary code on the fly.
 
 ### 🪧 Demo
-
+https://github.com/user-attachments/assets/553c7417-58cd-4fc2-9b0d-10304330184a
 
 ### 🤖 Intelligent Chat & RAG
 A versatile conversational interface that maintains context and utilizes Retrieval-Augmented Generation (RAG) to provide grounded answers based on your uploaded documents.
-*[GIF coming soon]*
 
 ## How It Works: The LangGraph Pipeline
 
@@ -69,6 +68,8 @@ streamlit run chat_app/chat_frontend.py
 
 ## Project Structure
 * chat_app/: Main Streamlit frontend and session management.
-* utils/: Core logic including LangGraph definitions (using_langgraph.py) and LangChain sequences.
+* utils/: Core logic including LangGraph definitions (using_langgraph.py) and LangChain sequences (using_langchain.py
+
+).
 * rag/: Components for document indexing and retrieval using scikit-learn embeddings.
 * chat/: Local storage for session history (JSON).
