@@ -94,7 +94,7 @@ chat_model_2 = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite-preview", api
 def node_2(input_state: StateSchema):
     query = input_state["prompt"]
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful AI assistant that provides back the python code for transformation of a pandas dataframe based on user query. Provide only the python code and nothing else. Each python code line will be seaparated by a comma."),
+        ("system", "You are a helpful AI assistant that provides back the python code for transformation of a pandas dataframe based on user query. Provide only the python code and nothing else. Each python code line will be seaparated by a comma. The python code will be on the basis of business question asked by the user, identify the columns and then give back the code only"),
         ("human", "{query}")
     ])
     # Want to store my final prompt
