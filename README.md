@@ -36,7 +36,7 @@ The core of the data transformation feature is built on a stateful **LangGraph**
         {Conditional Routing}
         /        |           \
  [Node_2]     [Node_3]      [Node_4]
- (Pandas)     (ATS/JD)      (General)
+  (ETL)       (ATS/JD)      (General)
     |            |             |
   [END] <-------[END] <-------[END]
 ```
